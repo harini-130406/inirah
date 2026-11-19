@@ -821,9 +821,472 @@ python3 --version
 
 Note: Ansible does not require starting a service. Once installed, it can be used directly from the terminal.
 
+Experiment: Install Git, PostgreSQL and Apache Using Ansible Roles
+Aim
+To use Ansible on a Linux system and create three Ansible roles named prerequisites, PostgreSQL, and apache to install Git, PostgreSQL, and Apache web server, respectively. Create a stack.yml playbook to execute all three roles on localhost and verify the successful installation of the required packages.
+Step 1: Open Ubuntu Terminal
+Since Ansible is already installed on your Ubuntu system (WSL), you do not need to install it again.
+Open Ubuntu terminal and check the Ansible version:
+ansible --version
+Expected output will display the installed Ansible version, configuration file location, Python version and other details.
+Step 2: Check Ansible Installation
+Check whether Ansible can communicate with localhost:
+ansible localhost -m ping -c local
+Expected output:
+localhost | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+Important: Ansible is an agentless automation tool. It does not run as a background service like Jenkins or Apache. You do not need to start an Ansible service. You execute Ansible commands and playbooks directly from the terminal.
+Step 3: Check the Locale Configuration
+Ansible requires UTF-8 locale encoding.
+Check the current locale:
+locale
+If the output shows UTF-8 encoding, continue.
+If it shows ISO8859-1 or another non-UTF-8 encoding, execute:
+sudo update-locale LANG=en_US.UTF-8
+Then close and reopen the Ubuntu terminal.
+Verify:
+locale
+Step 4: Create a Project Directory
+Create a directory named ansible_roles:
+mkdir ansible_roles
+Navigate into it:
+cd ansible_roles
+Step 5: Create the Three Ansible Roles
+Use the ansible-galaxy init command to generate the role directory structures.
+Create the prerequisites role:
+ansible-galaxy init prerequisites
+Create the PostgreSQL role:
+ansible-galaxy init PostgreSQL
+Create the Apache role:
+ansible-galaxy init apache
+These commands generate the standard directory structure for each role.
+Step 6: Verify the Role Directories
+Execute:
+tree
+The important directories should look like:
+ansible_roles/
+├── prerequisites/
+│   ├── tasks/
+│   │   └── main.yml
+│   ├── handlers/
+│   ├── defaults/
+│   ├── vars/
+│   ├── files/
+│   └── templates/
+├── PostgreSQL/
+│   ├── tasks/
+│   │   └── main.yml
+│   ├── handlers/
+│   ├── defaults/
+│   ├── vars/
+│   ├── files/
+│   └── templates/
+└── apache/
+    ├── tasks/
+    │   └── main.yml
+    ├── handlers/
+    ├── defaults/
+    ├── vars/
+    ├── files/
+    └── templates/
+Each role contains a tasks/main.yml file where the installation tasks will be defined.
+Step 7: Organize Roles Inside a roles Directory
+Ansible playbooks automatically search for roles in a directory named roles relative to the playbook.
+If you created the three roles directly inside ansible_roles, move them into roles:
+mkdir roles
+mv prerequisites PostgreSQL apache roles/
+Your structure should now be:
+ansible_roles/
+└── roles/
+    ├── prerequisites/
+    ├── PostgreSQL/
+    └── apache/
+Step 8: Configure the Prerequisites Role
+The prerequisites role is responsible for installing Git.
+Navigate to its tasks directory:
+nano roles/prerequisites/tasks/main.yml
+Replace the contents with:
+roles/prerequisites/tasks/main.yml
+---
+- name: Update package repository
+  apt:
+    update_cache: yes
 
+- name: Install Git
+  apt:
+    name: git
+    state: present
+Save the file using Ctrl + O, Enter and Ctrl + X.
+Step 9: Configure the PostgreSQL Role
+Navigate to the PostgreSQL tasks directory:
+nano roles/PostgreSQL/tasks/main.yml
+Replace the contents with:
+roles/PostgreSQL/tasks/main.yml
+---
+- name: Install PostgreSQL
+  apt:
+    name: postgresql
+    state: present
+    update_cache: yes
 
+- name: Start and enable PostgreSQL service
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+Save the file.
+Step 10: Configure the Apache Role
+Navigate to the Apache tasks directory:
+nano roles/apache/tasks/main.yml
+Replace the contents with:
+roles/apache/tasks/main.yml
+---
+- name: Install Apache web server
+  apt:
+    name: apache2
+    state: present
+    update_cache: yes
 
+- name: Start and enable Apache service
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+Save the file.
+Step 11: Create the stack.yml Playbook
+Return to the project root:
+cd ~/ansible_roles
+Create the playbook:
+nano stack.yml
+Enter the following code:
+stack.yml
+---
+- name: Install Git, PostgreSQL and Apache
+  hosts: localhost
+  connection: local
+  become: yes
 
+  roles:
+    - prerequisites
+    - PostgreSQL
+    - apache
+Save the file.
+Explanation
+Configuration
+Purpose
+hosts: localhost
+Executes the playbook on the local machine
+connection: local
+Uses a local connection
+become: yes
+Executes tasks with administrator privileges
+roles
+Specifies the three roles to execute
+prerequisites
+Installs Git
+PostgreSQL
+Installs PostgreSQL
+apache
+Installs Apache web server
 
+Step 12: Verify the Project Structure
+Execute:
+tree
+Expected structure:
+ansible_roles/
+├── roles/
+│   ├── prerequisites/
+│   │   └── tasks/
+│   │       └── main.yml
+│   ├── PostgreSQL/
+│   │   └── tasks/
+│   │       └── main.yml
+│   └── apache/
+│       └── tasks/
+│           └── main.yml
+└── stack.yml
+Step 13: Check the Playbook Syntax
+Before executing, verify the YAML syntax:
+ansible-playbook stack.yml --syntax-check
+Expected output:
+playbook: stack.yml
+Step 14: Execute the Ansible Playbook
+Run:
+ansible-playbook -i localhost, -c local stack.yml --ask-become-pass
+Enter your Ubuntu sudo password when prompted.
+Ansible will execute the three roles in sequence:
+Install Git.
+Install PostgreSQL.
+Install Apache web server.
+Expected output will show tasks similar to:
+TASK [prerequisites : Update package repository] ********
+changed: [localhost]
+
+TASK [prerequisites : Install Git] ***********************
+changed: [localhost]
+
+TASK [PostgreSQL : Install PostgreSQL] *******************
+changed: [localhost]
+
+TASK [PostgreSQL : Start and enable PostgreSQL service] **
+changed: [localhost]
+
+TASK [apache : Install Apache web server] ****************
+changed: [localhost]
+
+TASK [apache : Start and enable Apache service] **********
+changed: [localhost]
+
+PLAY RECAP ************************************************
+localhost : ok=6 changed=6 unreachable=0 failed=0
+Actual task counts and changed values may vary depending on which packages are already installed.
+Step 15: Verify Git Installation
+Execute:
+git --version
+Expected output:
+git version 2.x.x
+Step 16: Verify PostgreSQL Installation
+Check PostgreSQL version:
+psql --version
+Check its service:
+sudo service postgresql status
+Expected status:
+Active: active (exited)
+or another active status depending on the Ubuntu service configuration.
+Step 17: Verify Apache Installation
+Check Apache version:
+apache2 -v
+Check Apache service:
+sudo service apache2 status
+Expected status:
+Active: active (running)
+Step 18: Verify Apache Web Server
+Open a browser and enter:
+http://localhost
+You should see the Apache2 Ubuntu Default Page.
+Running Multiple PHP Instances with LAMP Stack on Ubuntu/Kubuntu 23.10 Linux 2024 (Update 2026)
+phoca.cz
+Alternatively, verify through the terminal:
+curl http://localhost
+The output should contain the Apache default page HTML.
+Important Commands for the Practical
+Operation
+Command
+Check Ansible version
+ansible --version
+Test localhost
+ansible localhost -m ping -c local
+Create a role
+ansible-galaxy init ROLE_NAME
+View directory structure
+tree
+Check playbook syntax
+ansible-playbook stack.yml --syntax-check
+Execute playbook
+ansible-playbook -i localhost, -c local stack.yml --ask-become-pass
+Check Git
+git --version
+Check PostgreSQL
+psql --version
+Check Apache
+apache2 -v
+Check Apache service
+sudo service apache2 status
+
+Result
+Ansible was used to create three roles: prerequisites, PostgreSQL, and apache. The stack.yml playbook was configured and executed successfully on localhost. Git, PostgreSQL, and Apache web server were installed, and their installations were verified successfully.
+
+Experiment 26: Create an Ansible playbook for a simple application and use modules in Ansible
+We will perform this experiment in Ubuntu on WSL, using your existing Ansible installation.
+We will create a simple web application deployment playbook that uses Ansible modules to:
+Update the Ubuntu package repository.
+Install Apache web server.
+Start and enable Apache.
+Create an application directory.
+Deploy a sample HTML webpage.
+Verify that the application is running.
+Practical experiment
+Step 1: Check Ansible installation
+Open Ubuntu terminal and execute:
+ansible --version
+Check whether Apache is already installed:
+apache2 -v
+If Apache is not installed, that is fine. The playbook will install it.
+Step 2: Create the project directory
+mkdir -p ~/ansible_app
+cd ~/ansible_app
+Create the playbook:
+nano app.yml
+Step 3: Write the Ansible playbook
+Enter the following code in app.yml.
+
+---
+- name: Deploy a Simple Web Application
+  hosts: localhost
+  connection: local
+  become: yes
+  gather_facts: no
+
+  tasks:
+
+    - name: Update package repository
+      apt:
+        update_cache: yes
+
+    - name: Install Apache web server
+      apt:
+        name: apache2
+        state: present
+
+    - name: Start and enable Apache
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Create application directory
+      file:
+        path: /var/www/html/myapp
+        state: directory
+        mode: '0755'
+
+    - name: Deploy application webpage
+      copy:
+        dest: /var/www/html/myapp/index.html
+        content: |
+          <html>
+          <head>
+              <title>My Ansible Application</title>
+          </head>
+          <body>
+              <h1>Welcome to My Application!</h1>
+              <p>Successfully deployed using Ansible.</p>
+          </body>
+          </html>
+        mode: '0644'
+
+    - name: Verify application deployment
+      command: cat /var/www/html/myapp/index.html
+      register: app_output
+      changed_when: false
+
+    - name: Display deployment result
+      debug:
+        msg: "Application deployed successfully!"
+Save the file using Ctrl + O, Enter, and Ctrl + X.
+Step 4: Check playbook syntax
+Before executing, check for YAML errors:
+ansible-playbook app.yml --syntax-check
+Expected output:
+playbook: app.yml
+Step 5: Execute the playbook
+Run:
+ansible-playbook -i localhost, -c local app.yml -K
+Enter your Ubuntu password when prompted at BECOME password:.
+The playbook will execute all seven tasks.
+Expected output will look similar to:
+PLAY [Deploy a Simple Web Application]
+
+TASK [Update package repository] ************************* ok
+TASK [Install Apache web server] ************************ changed
+TASK [Start and enable Apache] *************************** changed
+TASK [Create application directory] ********************** changed
+TASK [Deploy application webpage] ************************ changed
+TASK [Verify application deployment] ********************* ok
+TASK [Display deployment result] ************************ ok
+
+PLAY RECAP
+localhost : ok=7 changed=5 unreachable=0 failed=0
+The number of changed tasks may differ if Apache or the application files already exist.
+If the same sudo timeout occurs: Stop and share the output rather than changing sudoers. Your earlier tests showed that normal sudo works, but Ansible's password handling still needs to be verified.
+Step 6: Verify Apache service
+Check whether Apache is running:
+sudo service apache2 status
+Expected:
+Active: active (running)
+Step 7: Verify the deployed application
+Execute:
+curl http://localhost/myapp/
+Expected HTML output:
+<html>
+<head>
+    <title>My Ansible Application</title>
+</head>
+<body>
+    <h1>Welcome to My Application!</h1>
+    <p>Successfully deployed using Ansible.</p>
+</body>
+</html>
+You can also open this URL in your browser:
+http://localhost/myapp/
+Running Multiple PHP Instances with LAMP Stack on Ubuntu/Kubuntu 23.10 Linux 2024 (Update 2026)
+Step 8: Verify the created files
+ls -l /var/www/html/myapp/
+Expected:
+index.html
+View the file:
+cat /var/www/html/myapp/index.html
+Step 9: Understand the Ansible modules used
+Ansible module
+Purpose
+apt
+Installs Apache and updates packages
+service
+Starts and enables Apache
+file
+Creates the application directory
+copy
+Deploys the HTML webpage
+command
+Executes a Linux command
+debug
+Displays a success message
+
+Step 10: Important Ansible playbook concepts
+Keyword
+Explanation
+name
+Describes the play or task
+hosts
+Specifies the target machine
+connection
+Specifies how Ansible connects
+become
+Executes tasks with administrator privileges
+gather_facts
+Controls automatic system information collection
+tasks
+Contains the operations to perform
+register
+Stores task output in a variable
+changed_when
+Controls whether a task is reported as changed
+
+Step 11: Experiment result
+Result: Thus, an Ansible playbook was successfully created and executed to deploy a simple web application using different Ansible modules such as apt, service, file, copy, command, and debug.
+Viva questions
+What is Ansible?
+Ansible is an open-source automation tool used for configuration management, application deployment, and IT automation.
+What is an Ansible playbook?
+A playbook is a YAML file containing instructions that Ansible executes on target machines.
+What is an Ansible module?
+A module is a reusable unit of code that performs a specific task, such as installing software or copying files.
+What is the purpose of the apt module?
+It manages packages in Debian-based Linux systems.
+What is the purpose of the service module?
+It manages system services by starting, stopping, restarting, and enabling them.
+What is the difference between state: present and state: absent?
+present ensures a package or resource exists; absent ensures it is removed.
+What is the purpose of become: yes?
+It enables privilege escalation to perform administrative operations.
+What is YAML?
+YAML is a human-readable data serialization format used to write Ansible playbooks.
+What is idempotency in Ansible?
+Running the same playbook multiple times should maintain the desired state without making unnecessary changes.
+How do you execute an Ansible playbook?
+ansible-playbook app.yml
+For this experiment, because we need administrator privileges:
+ansible-playbook -i localhost, -c local app.yml -K
 
