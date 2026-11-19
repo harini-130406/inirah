@@ -1,5 +1,9 @@
 Jenkins
 
+sudo nano /var/lib/jenkins/config.xml
+change to false 
+
+
 Execution shell command common:
 echo "Compiling Java Program..."
 mkdir -p build
